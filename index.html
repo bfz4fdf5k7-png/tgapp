@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>P2P поиск</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    padding: 20px 16px 32px;
+    font-family: -apple-system, system-ui, sans-serif;
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #111111);
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--tg-theme-hint-color, #777777); font-size: 14px; margin: 0 0 20px; }
+  label { display: block; font-size: 13px; color: var(--tg-theme-hint-color, #777777); margin: 16px 0 6px; }
+  .seg { display: flex; background: var(--tg-theme-secondary-bg-color, #eeeeee); border-radius: 12px; padding: 4px; }
+  .seg button {
+    flex: 1; border: 0; padding: 12px; font-size: 16px; border-radius: 9px;
+    background: transparent; color: inherit;
+  }
+  .seg button.on { background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #ffffff); }
+  select {
+    width: 100%; padding: 14px; font-size: 16px; border: 0; border-radius: 12px;
+    background: var(--tg-theme-secondary-bg-color, #eeeeee); color: inherit;
+  }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .check {
+    display: flex; align-items: center; gap: 12px; margin-top: 20px; padding: 14px;
+    background: var(--tg-theme-secondary-bg-color, #eeeeee); border-radius: 12px; font-size: 16px;
+  }
+  .check input { width: 22px; height: 22px; }
+  #go {
+    width: 100%; margin-top: 24px; padding: 16px; font-size: 17px; font-weight: 600;
+    border: 0; border-radius: 12px;
+    background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #ffffff);
+  }
+  #status { margin-top: 14px; font-size: 14px; color: var(--tg-theme-hint-color, #777777); text-align: center; }
+  .note { margin-top: 20px; font-size: 12px; color: var(--tg-theme-hint-color, #777777); line-height: 1.4; }
+</style>
+</head>
+<body>
+  <h1>Поиск P2P</h1>
+  <p class="sub">Bybit P2P: лучшие объявления по курсу</p>
+
+  <div class="seg" id="seg">
+    <button class="on" data-side="buy">Купить</button>
+    <button data-side="sell">Продать</button>
+  </div>
+
+  <div class="row">
+    <div>
+      <label for="token">Монета</label>
+      <select id="token">
+        <option>USDT</option>
+        <option>USDC</option>
+        <option>BTC</option>
+        <option>ETH</option>
+      </select>
+    </div>
+    <div>
+      <label for="fiat">Валюта</label>
+      <select id="fiat">
+        <option>USD</option>
+        <option>EUR</option>
+        <option>KZT</option>
+        <option>TRY</option>
+        <option>AED</option>
+        <option>UAH</option>
+        <option>RUB</option>
+      </select>
+    </div>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" id="third">
+    <span>Только где разрешены третьи лица</span>
+  </label>
+
+  <button id="go">Найти предложения</button>
+  <div id="status"></div>
+  <p class="note">
+    После нажатия окно закроется, а результаты придут в чат с ботом.
+    Бот должен быть запущен.
+  </p>
+
+<script>
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  var side = "buy";
+  var buttons = document.querySelectorAll("#seg button");
+  buttons.forEach(function (b) {
+    b.onclick = function () {
+      buttons.forEach(function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      side = b.getAttribute("data-side");
+    };
+  });
+
+  document.getElementById("go").onclick = function () {
+    var data = {
+      side: side,
+      token: document.getElementById("token").value,
+      fiat: document.getElementById("fiat").value,
+      third: document.getElementById("third").checked
+    };
+    var status = document.getElementById("status");
+    if (tg && tg.initData) {
+      tg.sendData(JSON.stringify(data));
+    } else {
+      status.textContent = "Откройте приложение кнопкой в чате с ботом.";
+    }
+  };
+</script>
+</body>
+</html>
