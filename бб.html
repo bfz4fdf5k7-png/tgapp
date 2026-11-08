@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>P2P Радар</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #0a1020; --bg2: #101a33; --card: rgba(255,255,255,.05); --line: rgba(255,255,255,.09);
+  --text: #e8eefc; --hint: #8ea0c6; --accent: #2f9bff; --onaccent: #ffffff;
+  --good: #22c55e; --bad: #ef4444;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, system-ui, "SF Pro Text", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  background-image: radial-gradient(900px 420px at 50% -140px, var(--bg2), transparent);
+  background-repeat: no-repeat;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+#view { padding: 18px 16px 190px; max-width: 560px; margin: 0 auto; }
+h1 { font-size: 26px; margin: 0; letter-spacing: -.4px; }
+h2 { font-size: 20px; margin: 26px 0 10px; letter-spacing: -.2px; }
+.top p { margin: 4px 0 18px; color: var(--hint); font-size: 14px; }
+label.cap { display: block; font-size: 13px; color: var(--hint); margin: 16px 0 7px; }
+
+.seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 12px 6px; border-radius: 10px; font-weight: 600; font-size: 15px; }
+.seg button.on { background: var(--accent); color: var(--onaccent); box-shadow: 0 4px 14px rgba(47,155,255,.35); }
+
+.row2 { display: flex; gap: 10px; }
+.row2 > div { flex: 1; min-width: 0; }
+select, .in {
+  width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); font-size: 16px; appearance: none; -webkit-appearance: none;
+}
+select { background-image: linear-gradient(45deg, transparent 50%, var(--hint) 50%), linear-gradient(135deg, var(--hint) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 55%, calc(100% - 15px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+select option { color: #111; }
+.in::placeholder { color: var(--hint); opacity: .7; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 9px 15px; font-size: 14px; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--onaccent); font-weight: 600; }
+.tag { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 12px; font-size: 14px; }
+.tag button { border: 0; background: rgba(128,128,128,.25); width: 22px; height: 22px; border-radius: 50%; line-height: 20px; padding: 0; font-size: 15px; }
+.tag.no { border-color: rgba(239,68,68,.5); }
+
+.ghost { width: 100%; margin-top: 14px; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.badge { background: var(--accent); color: var(--onaccent); border-radius: 999px; font-size: 12px; padding: 1px 8px; }
+.panel { margin-top: 10px; padding: 4px 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+.check { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line); font-size: 15px; margin: 0; }
+.check input { width: 20px; height: 20px; margin: 0; }
+.add { display: flex; gap: 8px; }
+.add button { flex: none; width: 48px; border: 0; border-radius: 12px; background: var(--accent); color: var(--onaccent); font-size: 22px; }
+.gap { margin-top: 10px; }
+
+#cta { position: fixed; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 528px;
+  bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 5; }
+.primary { width: 100%; padding: 16px; border: 0; border-radius: 14px; background: var(--accent); color: var(--onaccent);
+  font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.4); }
+.primary:disabled { opacity: .6; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 14px; font-weight: 600; font-size: 14px; }
+.btn.acc { background: var(--accent); border-color: var(--accent); color: var(--onaccent); }
+.btn.danger { color: var(--bad); }
+
+#nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom));
+  width: calc(100% - 24px); max-width: 536px; display: flex; gap: 4px; padding: 6px; z-index: 6;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+#nav button { flex: 1; border: 0; background: transparent; border-radius: 16px; padding: 8px 2px 7px; color: var(--hint);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; }
+#nav button.on { background: rgba(47,155,255,.16); color: var(--accent); font-weight: 600; }
+svg.ic { width: 22px; height: 22px; }
+
+.sum { display: flex; gap: 8px; margin: 18px 0 6px; }
+.sum div { flex: 1; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.sum small { display: block; color: var(--hint); font-size: 12px; }
+.sum b { font-size: 16px; }
+.note { color: var(--hint); font-size: 13px; margin: 6px 2px 10px; line-height: 1.4; }
+
+.ad { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+.ad-top { display: flex; align-items: center; gap: 10px; }
+.av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; overflow: hidden; }
+.av img { width: 100%; height: 100%; object-fit: cover; }
+.nm { flex: 1; min-width: 0; }
+.nm b { display: block; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm small { color: var(--hint); font-size: 13px; }
+.star { border: 0; background: transparent; padding: 6px; color: var(--hint); }
+.star.on { color: #f5b301; }
+.price { margin: 12px 0 2px; font-size: 32px; font-weight: 700; letter-spacing: -.8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.price span { font-size: 15px; color: var(--hint); font-weight: 500; letter-spacing: 0; }
+.dev { font-size: 13px; font-weight: 600; letter-spacing: 0; padding: 2px 8px; border-radius: 999px; }
+.dev.good { background: rgba(34,197,94,.16); color: var(--good); }
+.dev.bad { background: rgba(239,68,68,.16); color: var(--bad); }
+.dev.mid { background: rgba(128,128,128,.18); color: var(--hint); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 10px; font-size: 14px; }
+.facts small { display: block; color: var(--hint); font-size: 12px; }
+.facts .wide { grid-column: 1 / -1; }
+.remark { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.4; color: var(--hint); word-break: break-word; }
+mark { background: rgba(245,179,1,.28); color: inherit; border-radius: 4px; padding: 0 2px; }
+.acts { display: flex; gap: 8px; margin-top: 12px; }
+.acts .btn { flex: 1; }
+
+.sk { height: 190px; margin-top: 12px; border-radius: 18px; background: linear-gradient(90deg, var(--card), rgba(128,128,128,.16), var(--card)); background-size: 200% 100%; animation: sh 1.2s linear infinite; }
+@keyframes sh { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+
+.empty { text-align: center; padding: 38px 18px; color: var(--hint); border: 1px dashed var(--line); border-radius: 18px; margin-top: 16px; line-height: 1.5; }
+.empty b { display: block; color: var(--text); font-size: 17px; margin-bottom: 6px; }
+.err { margin-top: 16px; padding: 16px; border-radius: 16px; border: 1px solid rgba(239,68,68,.45); background: rgba(239,68,68,.08); line-height: 1.45; font-size: 14px; }
+.err b { display: block; font-size: 16px; margin-bottom: 6px; }
+.err .btn { margin-top: 10px; margin-right: 8px; }
+
+.hero { text-align: center; padding-top: 6px; }
+.ava { width: 96px; height: 96px; margin: 8px auto 12px; border-radius: 50%; padding: 4px; border: 3px solid var(--accent); display: grid; place-items: center; }
+.ava .av { width: 100%; height: 100%; font-size: 34px; }
+.hero h1 { font-size: 24px; }
+.hero p { margin: 4px 0 12px; color: var(--hint); font-size: 14px; }
+.pill { display: inline-block; padding: 8px 16px; border: 1px solid var(--line); background: var(--card); border-radius: 999px; font-weight: 600; font-size: 14px; }
+.stats { display: flex; gap: 10px; margin-top: 20px; }
+.stats div { flex: 1; text-align: left; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+.stats small { color: var(--hint); font-size: 13px; }
+.stats b { display: block; font-size: 26px; margin-top: 4px; }
+.list { border: 1px solid var(--line); border-radius: 18px; background: var(--card); overflow: hidden; }
+.item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 14px; border: 0; background: transparent; text-align: left; border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; }
+.item .ico { width: 42px; height: 42px; border-radius: 12px; background: rgba(128,128,128,.14); display: grid; place-items: center; flex: none; }
+.item .rt { flex: 1; min-width: 0; }
+.item .rt b { display: block; font-size: 16px; }
+.item .rt small { color: var(--hint); font-size: 13px; }
+.item .chev { color: var(--hint); font-size: 20px; }
+.footnote { text-align: center; color: var(--hint); font-size: 13px; margin: 18px 0 0; }
+
+.hrow { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-top: 1px solid var(--line); }
+.hrow:first-child { border-top: 0; }
+.hrow .t { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; }
+.hrow .t small { color: var(--hint); display: block; font-size: 12px; }
+
+#sheet { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.55); display: none; align-items: flex-end; }
+#sheet.show { display: flex; }
+.sheet-card { width: 100%; max-width: 560px; margin: 0 auto; max-height: 86vh; overflow-y: auto; background: var(--bg2); color: var(--text);
+  border-radius: 24px 24px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); border: 1px solid var(--line); }
+.sheet-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sheet-h b { font-size: 19px; }
+.sheet-b { font-size: 14px; line-height: 1.5; }
+.sheet-b p { margin: 8px 0; }
+.sheet-b ul { padding-left: 18px; margin: 8px 0; }
+.sheet-b li { margin: 4px 0; }
+
+#toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(10px);
+  background: #111; color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none; transition: .2s; z-index: 30; }
+#toast.show { opacity: 1; transform: translateX(-50%); }
+.dev.warn { background: rgba(245,158,11,.18); color: #f59e0b; }
+.orig { color: var(--hint); font-size: 13px; margin-top: -2px; }
+.banner { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(245,158,11,.45); background: rgba(245,158,11,.08); font-size: 13px; line-height: 1.45; }
+.res-line { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.res-line:first-child { border-top: 0; }
+.pos { color: var(--good); }
+.neg { color: var(--bad); }
+.sub-h { font-size: 17px; margin: 22px 0 0; }
+textarea.in { resize: vertical; min-height: 84px; line-height: 1.4; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div id="cta"></div>
+<nav id="nav"></nav>
+<div id="sheet"></div>
+<div id="toast"></div>
+
+<script>
+(function () {
+"use strict";
+
+var tg = window.Telegram && window.Telegram.WebApp;
+
+// Адрес прокси можно вписать сюда или ввести в приложении: Профиль → Подключение
+var CONFIG = { PROXY: "", SUPABASE_URL: "https://pbdsxtidzgnfeoklwnjg.supabase.co", SUPABASE_KEY: "sb_publishable_TvenpPa82DBJISTZ5BG7kA_HNDjolf2" };
+var DIRECT = "https://api2.bybit.com/fiat/otc/item/online";
+var BYBIT_PAGE = "https://www.bybit.com/fiat/trade/otc/";
+var BOT = "OrdersPayX_Bot";
+
+var TOKENS = ["USDT", "USDC", "BTC", "ETH"];
+var FIATS = ["USD", "EUR", "KZT", "TRY", "AED", "UAH", "RUB"];
+var SORTS = [
+  ["best", "Выгодные"], ["low", "Низкий курс"], ["high", "Высокий курс"],
+  ["rate", "Рейтинг"], ["orders", "Сделки"], ["limit", "Большой лимит"]
+];
+var PAY = { "14": "Bank Transfer" };
+var THIRD = ["3 лиц", "3х лиц", "3-х лиц", "3-их лиц", "3 лица", "третьих лиц", "третьи лица", "доверенн", "довоенн", "3rd party", "third party"];
+var NEG = ["без", "не ", "нет", "запрещ", "no ", "not "];
+
+var DEFAULT_F = { side: "buy", token: "USDT", fiat: "USD", sort: "best", amount: "", minRate: 95, minOrders: 50, third: false, words: [], stop: [] };
+
+function load(k, d) { try { var v = localStorage.getItem("p2p_" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem("p2p_" + k, JSON.stringify(v)); } catch (e) {} }
+
+var prefs = load("prefs", { theme: "tg", searches: 0, proxy: "" });
+var favs = load("favs", []);
+var hist = load("hist", []);
+var presets = load("presets", []);
+var f = Object.assign({}, DEFAULT_F, load("filters", {}));
+var ui = { tab: "search", reqFilter: "open", reqAmount: "", reqRate: "", chatText: "", open: false, raw: null, meta: null, loading: false, error: null,
+  regTab: "buy", regIdx: 0, regForm: {}, regCalc: "", sp: { loading: false, error: null, data: null }, calc: Object.assign({ amount: "10000", buy: "", sell: "", feeBuy: "0", feeSell: "0" }, load("calc", {})) };
+var user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
+var market = { client: null, ready: false, busy: false, active: null, messages: [], poll: null, work: load("market_work", false) };
+var marketUser = { id: null, label: "Пользователь" };
+function marketConfigured() { return !!(window.supabase && CONFIG.SUPABASE_URL.indexOf("https://") === 0 && CONFIG.SUPABASE_KEY.indexOf("ВСТАВЬТЕ") !== 0); }
+async function marketInit() {
+  if (market.ready) return true;
+  if (!marketConfigured()) return false;
+  market.client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+  var au = await market.client.auth.getSession();
+  if (!au.data.session) { var sign = await market.client.auth.signInAnonymously(); if (sign.error) throw sign.error; }
+  var sess = await market.client.auth.getSession(); marketUser.id = sess.data.session.user.id;
+  marketUser.label = user ? ((user.first_name || "") + (user.username ? " · @" + user.username : "")).trim() : "Пользователь";
+  // Сохраняем режим «В работе» в общей базе, а не только в localStorage.
+  var profile = await market.client.from("p2p_profiles").select("work_enabled").eq("user_id", marketUser.id).maybeSingle();
+  if (profile.error) throw profile.error;
+  if (profile.data) market.work = !!profile.data.work_enabled;
+  else {
+    var created = await market.client.from("p2p_profiles").insert({user_id:marketUser.id, display_name:marketUser.label, work_enabled:!!market.work});
+    if (created.error) throw created.error;
+  }
+  save("market_work", market.work);
+  market.ready = true;
+  return true;
+}
+function marketUnavailable() { sheet("Подключение заявок", '<p>Для обмена заявками между разными пользователями нужен общий сервер. Подключите Supabase и выполните SQL из файла <b>supabase_setup.sql</b>, затем укажите URL и anon key в CONFIG в начале HTML.</p><p>Без этого заявки будут недоступны другим пользователям — одно HTML-хранилище не может рассылать их между телефонами.</p>'); }
+function marketStatus(r) { return r.status === "open" ? "Открыта" : r.status === "active" ? "В работе" : "Завершена"; }
+function marketTabs() { return '<div class="seg">' + seg("reqfilter", "open", "Новые", ui.reqFilter || "open") + seg("reqfilter", "active", "В работе", ui.reqFilter || "open") + seg("reqfilter", "done", "Завершённые", ui.reqFilter || "open") + '</div>'; }
+async function loadRequests() {
+  if (!await marketInit()) { render(); return; }
+  var q = market.client.from("p2p_requests").select("*").order("created_at", {ascending:false}).limit(100);
+  var res = await q; if (res.error) { toast("Не удалось загрузить заявки"); return; }
+  market.requests = res.data || []; render();
+}
+function requestCard(r) {
+  var mine = r.owner_id === marketUser.id, taken = r.taker_id === marketUser.id;
+  var h = '<div class="ad"><div class="ad-top"><div class="nm"><b>Заявка #' + esc(String(r.id).slice(0,8)) + '</b><small>' + esc(r.owner_label || "Мерчант") + ' · ' + new Date(r.created_at).toLocaleString("ru-RU") + '</small></div><span class="dev ' + (r.status === "done" ? "good" : r.status === "active" ? "warn" : "mid") + '">' + marketStatus(r) + '</span></div>';
+  h += '<div class="price">' + fmt(Number(r.amount),2) + ' ₽ <span>сумма</span></div><div class="facts"><div><small>Курс</small>' + fmt(Number(r.rate),2) + ' ₽</div><div><small>Создатель</small>' + (mine ? 'Вы' : esc(r.owner_label || 'Мерчант')) + '</div></div>';
+  
+  if (r.status === "open" && !mine && market.work) h += '<button class="btn acc" data-act="claimReq" data-id="' + esc(r.id) + '" style="width:100%;margin-top:12px">Взять ордер</button>';
+  if (r.status === "active" && (mine || taken)) h += '<div class="acts"><button class="btn" data-act="chatReq" data-id="' + esc(r.id) + '">Открыть чат</button><button class="btn acc" data-act="doneReq" data-id="' + esc(r.id) + '">Завершить</button></div>';
+  if (r.status === "done") h += '<p class="note">Участники: ' + (mine ? 'Вы' : esc(r.owner_label || 'Мерчант')) + ' и ' + (taken ? 'Вы' : esc(r.taker_label || 'Исполнитель')) + '</p>';
+  h += '</div>'; return h;
+}
+function requestsTab() {
+  var filter = ui.reqFilter || "open", all = market.requests || [];
+  var list = all.filter(function(r){ return filter === "open" ? (market.work && r.status === "open") : filter === "active" ? r.status === "active" && (r.owner_id === marketUser.id || r.taker_id === marketUser.id) : r.status === "done" && (r.owner_id === marketUser.id || r.taker_id === marketUser.id); });
+  var h = '<header class="top"><h1>Заявки</h1><p>Публикуйте тестовые предложения и просматривайте заявки участников.</p></header>';
+  h += '<div class="panel" style="padding:14px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div><b>Принимать заявки</b><div class="note" style="margin:4px 0 0">' + (market.work ? 'Вы в линии — новые заявки доступны вам' : 'Вы не получаете новые заявки') + '</div></div><button class="btn ' + (market.work ? 'acc' : '') + '" data-act="toggleWork">' + (market.work ? '● В работе' : '○ Выключено') + '</button></div></div>';
+  h += '<button class="primary" data-act="newRequest" style="margin-top:14px">＋ Создать заявку</button>';
+  h += '<h2>Лента заявок</h2>' + marketTabs();
+  if (!market.ready) h += '<div class="empty"><b>Нужно подключить сервер</b>Настройте Supabase, чтобы заявки и чаты синхронизировались у всех пользователей.</div>';
+  else if (!list.length) h += '<div class="empty"><b>Заявок пока нет</b>' + (filter === "open" && !market.work ? "Включите режим «В работе», чтобы получать новые заявки." : "Здесь появятся предложения, подходящие выбранному разделу.") + '</div>';
+  else h += list.map(requestCard).join("");
+  return h;
+}
+function newRequestSheet() {
+  sheet("Новая заявка", '<p class="note">Демо-режим: используйте только вымышленные суммы и значения. Заявка станет видна участникам, у которых включён режим «В работе».</p><label class="cap">Сумма, ₽</label><input class="in" data-f="reqAmount" inputmode="decimal" placeholder="Например, 5000"><label class="cap">Курс за 1 USDT, ₽</label><input class="in" data-f="reqRate" inputmode="decimal" placeholder="Например, 98"><div class="acts"><button class="btn acc" data-act="publishReq">Опубликовать</button><button class="btn" data-act="sheetClose">Отмена</button></div>');
+}
+async function publishRequest() {
+  var amount = num(ui.reqAmount), rate = num(ui.reqRate);
+  if (!amount || amount <= 0 || !rate || rate <= 0) { toast("Укажите корректные сумму и курс"); return; }
+  try { if (!await marketInit()) return marketUnavailable();
+    var x = await market.client.from("p2p_requests").insert({owner_id:marketUser.id, owner_label:marketUser.label, amount:amount, rate:rate, status:"open"}).select().single();
+    if (x.error) throw x.error; closeSheet(); ui.reqFilter="open"; await loadRequests(); toast("Заявка опубликована");
+  } catch(e) { toast("Ошибка публикации: " + (e.message || "сервер")); }
+}
+async function claimRequest(id) {
+  try { var x = await market.client.rpc("claim_p2p_request", {request_uuid:id, taker_name:marketUser.label});
+    if (x.error) throw x.error; toast("Заявка добавлена в работу"); await loadRequests();
+  } catch(e) { toast("Не удалось взять заявку: " + (e.message || "возможно, её уже забрали")); }
+}
+async function openRequestChat(id) {
+  var r = (market.requests || []).find(function(x){return String(x.id)===String(id)}); if(!r)return;
+  market.active = r; await loadMessages(id); showChatSheet();
+}
+async function loadMessages(id) {
+  var x = await market.client.from("p2p_messages").select("*").eq("request_id",id).order("created_at",{ascending:true}).limit(100);
+  if (x.error) { toast("Не удалось загрузить чат"); return; } market.messages = x.data || [];
+}
+function showChatSheet() {
+  var r=market.active; if(!r)return;
+  var h='<p class="note">Тестовый чат участников демонстрационной заявки. Не отправляйте личные данные, коды или пароли.</p><div style="max-height:36vh;overflow:auto">';
+  h += (market.messages||[]).map(function(m){return '<div class="panel" style="padding:10px;margin:7px 0"><b>'+esc(m.sender_label||'Участник')+'</b><p style="margin:5px 0">'+esc(m.body)+'</p><small style="color:var(--hint)">'+new Date(m.created_at).toLocaleString('ru-RU')+'</small></div>';}).join("") || '<p class="note">Сообщений пока нет.</p>';
+  h += '</div><label class="cap">Сообщение или ссылка на ордер</label><textarea class="in" data-f="chatText" placeholder="Тестовое сообщение"></textarea><button class="btn acc" data-act="sendMsg" style="width:100%;margin-top:10px">Отправить</button>';
+  h += '<p class="note">Это демонстрационная заявка: никаких платежей и переводов здесь не выполняется.</p>';
+  sheet("Чат по заявке",h);
+}
+async function sendMessage() {
+  var body=String(ui.chatText||"").trim(); if(!body)return toast("Введите сообщение");
+  var r=market.active; var x=await market.client.from("p2p_messages").insert({request_id:r.id,sender_id:marketUser.id,sender_label:marketUser.label,body:body});
+  if(x.error){toast("Не удалось отправить");return;} ui.chatText=""; await loadMessages(r.id); showChatSheet();
+}
+async function finishRequest(id) {
+  var x=await market.client.rpc("finish_p2p_request", {request_uuid:id});
+  if(x.error){toast("Не удалось завершить заявку: " + (x.error.message || "ошибка"));return;}
+  closeSheet(); await loadRequests(); toast("Ордер отмечен завершённым");
+}
+async function setWorkMode(enabled) {
+  market.work = !!enabled; save("market_work", market.work);
+  try {
+    if (await marketInit()) {
+      var x = await market.client.from("p2p_profiles").upsert({user_id:marketUser.id, display_name:marketUser.label, work_enabled:market.work}, {onConflict:"user_id"});
+      if (x.error) throw x.error;
+    }
+    render(); toast(market.work ? "Вы принимаете заявки" : "Приём заявок выключен");
+  } catch(e) { market.work = !enabled; save("market_work",market.work); render(); toast("Не удалось сохранить режим работы"); }
+}
+
+
+/* ---------- курсы валют к рублю (ЦБ РФ) ---------- */
+var rates = load("rates", { rub: {}, at: 0 });
+var ratesP = null;
+function rubRate(cur) {
+  if (cur === "RUB") return 1;
+  var base = (rates.rub && rates.rub[cur]) || null;
+  var my = num(prefs.myRate), usd = rates.rub && rates.rub.USD;
+  if (my) {
+    if (cur === "USD") return my;
+    if (base && usd) return base * my / usd;
+  }
+  return base;
+}
+function rubOn(fiat, force) { return !!(force || prefs.rub !== false) && fiat !== "RUB" && !!rubRate(fiat); }
+function disp(price, fiat, force) { return price === null || price === undefined ? null : (rubOn(fiat, force) ? price * rubRate(fiat) : price); }
+function dispCur(fiat, force) { return rubOn(fiat, force) ? "₽" : fiat; }
+function mul(v, k) { return v === null || v === undefined ? null : v * k; }
+function loadRates() {
+  if (ratesP) return ratesP;
+  ratesP = (async function () {
+    if (rates.at && Date.now() - rates.at < 6 * 3600 * 1000 && rates.rub && rates.rub.USD) return false;
+    var out = null, list = ["USD", "EUR", "KZT", "TRY", "AED", "UAH"];
+    try {
+      var r = await fetch("https://www.cbr-xml-daily.ru/daily_json.js");
+      var d = await r.json(), o = {};
+      list.forEach(function (c) { if (d.Valute && d.Valute[c]) o[c] = d.Valute[c].Value / d.Valute[c].Nominal; });
+      if (o.USD) out = o;
+    } catch (e) {}
+    if (!out) {
+      try {
+        var r2 = await fetch("https://open.er-api.com/v6/latest/USD");
+        var d2 = await r2.json(), o2 = {};
+        list.forEach(function (c) { if (d2.rates && d2.rates[c] && d2.rates.RUB) o2[c] = d2.rates.RUB / d2.rates[c]; });
+        if (o2.USD) out = o2;
+      } catch (e) {}
+    }
+    if (out) { rates = { rub: out, at: Date.now() }; save("rates", rates); return true; }
+    ratesP = null;
+    return false;
+  })();
+  return ratesP;
+}
+
+function $(id) { return document.getElementById(id); }
+function num(v) { var n = parseFloat(v); return isFinite(n) ? n : null; }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function decode(s) { var t = document.createElement("textarea"); t.innerHTML = String(s == null ? "" : s); return t.value; }
+function fmt(n, d) {
+  if (n === null || n === undefined) return "—";
+  return n.toLocaleString("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function median(a) {
+  if (!a.length) return null;
+  var v = a.slice().sort(function (x, y) { return x - y; });
+  var m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+function haptic() { try { tg.HapticFeedback.impactOccurred("light"); } catch (e) {} }
+function toast(msg) {
+  var t = $("toast"); t.textContent = msg; t.className = "show";
+  clearTimeout(toast.t); toast.t = setTimeout(function () { t.className = ""; }, 1900);
+}
+function openUrl(u) { if (tg && tg.openLink) tg.openLink(u); else window.open(u, "_blank"); }
+function copyText(s) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(s); return; } } catch (e) {}
+  var ta = document.createElement("textarea"); ta.value = s; document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+/* ---------- тема ---------- */
+function applyTheme() {
+  var dark = { bg: "#0a1020", bg2: "#101a33", card: "rgba(255,255,255,.05)", line: "rgba(255,255,255,.09)", text: "#e8eefc", hint: "#8ea0c6", accent: "#2f9bff", on: "#ffffff" };
+  var light = { bg: "#f2f5fa", bg2: "#e8eef8", card: "#ffffff", line: "#dde5f0", text: "#0f172a", hint: "#64748b", accent: "#2481cc", on: "#ffffff" };
+  var p = (tg && tg.themeParams) || {};
+  var c = dark;
+  if (prefs.theme === "light") c = light;
+  else if (prefs.theme === "dark") c = dark;
+  else if (p.bg_color) {
+    c = { bg: p.bg_color, bg2: p.secondary_bg_color || p.bg_color, card: "rgba(128,128,128,.12)", line: "rgba(128,128,128,.25)",
+      text: p.text_color || "#fff", hint: p.hint_color || "#8e8e93", accent: p.button_color || "#2481cc", on: p.button_text_color || "#fff" };
+  }
+  var s = document.documentElement.style;
+  s.setProperty("--bg", c.bg); s.setProperty("--bg2", c.bg2); s.setProperty("--card", c.card); s.setProperty("--line", c.line);
+  s.setProperty("--text", c.text); s.setProperty("--hint", c.hint); s.setProperty("--accent", c.accent); s.setProperty("--onaccent", c.on);
+  try { if (tg) { tg.setHeaderColor(c.bg); tg.setBackgroundColor(c.bg); } } catch (e) {}
+}
+
+/* ---------- иконки ---------- */
+function icon(name, fill) {
+  var d = {
+    search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    star: '<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+    filter: '<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
+    book: '<path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M4 17a3 3 0 0 1 3-3h12"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>',
+    bot: '<rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    trend: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><path d="M17 4.5a3.5 3.5 0 0 1 0 7M19 15c2 .6 3 2.2 3 5"/>'
+  }[name] || "";
+  return '<svg class="ic" viewBox="0 0 24 24" fill="' + (fill ? "currentColor" : "none") + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
+}
+
+/* ---------- данные ---------- */
+function payload(side, token, fiat, page) {
+  return {
+    userId: "", tokenId: token, currencyId: fiat, payment: [], side: side === "buy" ? "1" : "0",
+    size: "50", page: String(page), amount: "", vaMaker: false, bulkMaker: false, canTrade: false,
+    verificationFilter: 0, sortType: "TRADE_PRICE", paymentPeriod: [], itemRegion: 1
+  };
+}
+async function fetchPage(url, side, token, fiat, page) {
+  var ctrl = new AbortController();
+  var timer = setTimeout(function () { ctrl.abort(); }, 15000);
+  try {
+    var r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload(side, token, fiat, page)), signal: ctrl.signal });
+    var d = await r.json();
+    if (d && d.ret_code && d.ret_code !== 0) throw new Error(d.ret_msg || "ошибка Bybit");
+    return (d && d.result && d.result.items) || [];
+  } finally { clearTimeout(timer); }
+}
+async function fetchAds(side, token, fiat) {
+  var url = (prefs.proxy || CONFIG.PROXY || "").trim();
+  var viaProxy = !!url;
+  if (!viaProxy) url = DIRECT;
+  var pages = await Promise.all([
+    fetchPage(url, side, token, fiat, 1),
+    fetchPage(url, side, token, fiat, 2).catch(function () { return []; })
+  ]);
+  var seen = {}, items = [];
+  pages[0].concat(pages[1]).forEach(function (a) {
+    var k = String(a.id);
+    if (!seen[k]) { seen[k] = 1; items.push(a); }
+  });
+  return { items: items, source: viaProxy ? "прокси" : "напрямую" };
+}
+function explain(e) {
+  var m = String((e && e.message) || e || "");
+  if (e && e.name === "AbortError") return "Bybit не ответил за 15 секунд.";
+  if (/Failed to fetch|Load failed|NetworkError|CORS/i.test(m)) return "Браузер не даёт обратиться к Bybit напрямую (ограничение CORS).";
+  return m || "Неизвестная ошибка.";
+}
+
+/* ---------- фильтры ---------- */
+function allowsThird(text) {
+  for (var i = 0; i < THIRD.length; i++) {
+    var at = text.indexOf(THIRD[i]);
+    while (at !== -1) {
+      var before = text.slice(Math.max(0, at - 25), at);
+      var neg = NEG.some(function (n) { return before.indexOf(n) !== -1; });
+      if (!neg) return true;
+      at = text.indexOf(THIRD[i], at + 1);
+    }
+  }
+  return false;
+}
+function applyFilters(items, side, meta) {
+  var amount = num(f.amount);
+  if (amount && meta && meta.fallback && rubRate(meta.fiat)) amount = amount / rubRate(meta.fiat);
+  var out = items.filter(function (ad) {
+    var price = num(ad.price);
+    if (price === null || price <= 0) return false;
+    var rate = num(ad.recentExecuteRate), orders = num(ad.recentOrderNum);
+    if (rate !== null && rate < f.minRate) return false;
+    if (orders !== null && orders < f.minOrders) return false;
+    if (amount) {
+      var lo = num(ad.minAmount), hi = num(ad.maxAmount);
+      if (lo !== null && amount < lo) return false;
+      if (hi !== null && amount > hi) return false;
+    }
+    var text = decode(ad.remark).toLowerCase();
+    if (f.third && !allowsThird(text)) return false;
+    for (var i = 0; i < f.words.length; i++) if (text.indexOf(f.words[i]) === -1) return false;
+    for (var j = 0; j < f.stop.length; j++) if (text.indexOf(f.stop[j]) !== -1) return false;
+    return true;
+  });
+  var mode = f.sort;
+  if (mode === "best") mode = side === "buy" ? "low" : "high";
+  out.sort(function (a, b) {
+    var d;
+    if (mode === "low") d = num(a.price) - num(b.price);
+    else if (mode === "high") d = num(b.price) - num(a.price);
+    else if (mode === "rate") d = (num(b.recentExecuteRate) || 0) - (num(a.recentExecuteRate) || 0);
+    else if (mode === "orders") d = (num(b.recentOrderNum) || 0) - (num(a.recentOrderNum) || 0);
+    else d = (num(b.maxAmount) || 0) - (num(a.maxAmount) || 0);
+    if (d === 0) d = (num(b.recentOrderNum) || 0) - (num(a.recentOrderNum) || 0);
+    return d;
+  });
+  return out;
+}
+function filterCount() {
+  var n = 0;
+  if (f.amount) n++;
+  if (f.minRate !== DEFAULT_F.minRate) n++;
+  if (f.minOrders !== DEFAULT_F.minOrders) n++;
+  if (f.third) n++;
+  n += f.words.length + f.stop.length;
+  return n;
+}
+
+/* ---------- карточка объявления ---------- */
+function hue(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
+function highlight(text, words) {
+  var out = esc(text);
+  words.forEach(function (w) {
+    if (!w) return;
+    var re = new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    out = out.replace(re, function (m) { return "<mark>" + m + "</mark>"; });
+  });
+  return out;
+}
+function payText(ad) {
+  var p = (ad.payments || []).map(function (x) { return PAY[String(x)] || "Способ " + x; });
+  return p.length ? p.join(", ") : "—";
+}
+function isFav(id) { return favs.some(function (a) { return String(a.id) === String(id); }); }
+function orderLink(ad, ctx) {
+  var uid = null;
+  [ad.accountId, ad.userId].forEach(function (v) { if (!uid && v && String(v) !== "0") uid = String(v); });
+  if (uid) return "https://www.bybit.com/fiat/trade/otc/profile/" + encodeURIComponent(uid) + "/" + ctx.token + "/" + ctx.fiat + "/item";
+  return BYBIT_PAGE + "?actionType=" + (ctx.side === "buy" ? "1" : "0") + "&token=" + ctx.token + "&fiat=" + ctx.fiat;
+}
+function fairDev(price, ctx) {
+  if (price === null || (ctx.token !== "USDT" && ctx.token !== "USDC")) return null;
+  var usd = rubRate("USD"), k = rubRate(ctx.fiat);
+  if (!usd || !k) return null;
+  return (price * k / usd - 1) * 100;
+}
+function adCard(ad, ctx, mid) {
+  var price = num(ad.price), rate = num(ad.recentExecuteRate), orders = num(ad.recentOrderNum);
+  var nick = String(ad.nickName || "?");
+  var dev = mid && price ? (price - mid) / mid * 100 : null;
+  var cls = "mid";
+  if (dev !== null && Math.abs(dev) >= 0.05) cls = ((ctx.side === "buy" && dev < 0) || (ctx.side === "sell" && dev > 0)) ? "good" : "bad";
+  var devHtml = dev === null ? "" : '<span class="dev ' + cls + '">' + (dev > 0 ? "+" : "") + dev.toFixed(1).replace(".", ",") + "% к среднему</span>";
+  var fair = fairDev(price, ctx);
+  var warnHtml = (fair !== null && Math.abs(fair) >= 10) ? '<span class="dev warn">⚠ ' + (fair > 0 ? "+" : "") + fair.toFixed(0) + "% к курсу доллара: проверьте продавца</span>" : "";
+  var remark = decode(ad.remark).replace(/\s+/g, " ").trim();
+  if (remark.length > 240) remark = remark.slice(0, 240) + "…";
+  var id = esc(ad.id);
+  var shown = disp(price, ctx.fiat, ctx.force), cur = dispCur(ctx.fiat, ctx.force);
+  var h = '<div class="ad"><div class="ad-top">';
+  h += '<div class="av" style="background:hsl(' + hue(nick) + ',55%,42%)">' + esc(nick.charAt(0).toUpperCase()) + "</div>";
+  h += '<div class="nm"><b>' + esc(nick) + "</b><small>" + (orders === null ? "?" : fmt(orders, 0)) + " ордеров · " + (rate === null ? "?" : fmt(rate, 0)) + "%</small></div>";
+  h += '<button class="star' + (isFav(ad.id) ? " on" : "") + '" data-act="fav" data-id="' + id + '" aria-label="В избранное">' + icon("star", isFav(ad.id)) + "</button></div>";
+  h += '<div class="price">' + fmt(shown, 2) + " <span>" + esc(cur) + " за 1 " + esc(ctx.token) + "</span>" + devHtml + "</div>";
+  if (cur !== ctx.fiat) h += '<div class="orig">В объявлении: ' + fmt(price, 3) + " " + esc(ctx.fiat) + "</div>";
+  if (warnHtml) h += '<div class="gap">' + warnHtml + "</div>";
+  h += '<div class="facts"><div><small>Лимиты</small>' + fmt(num(ad.minAmount), 0) + " – " + fmt(num(ad.maxAmount), 0) + " " + esc(ctx.fiat) + "</div>";
+  h += "<div><small>Количество</small>" + fmt(num(ad.lastQuantity), 2) + " " + esc(ctx.token) + "</div>";
+  h += '<div class="wide"><small>Оплата</small>' + esc(payText(ad)) + "</div></div>";
+  if (remark) h += '<div class="remark">' + highlight(remark, ctx.words || []) + "</div>";
+  h += '<div class="acts"><button class="btn" data-act="copy" data-id="' + id + '">Копировать ID</button>';
+  h += '<button class="btn acc" data-act="openurl" data-url="' + esc(orderLink(ad, ctx)) + '">Открыть ордер</button></div></div>';
+  return h;
+}
+
+/* ---------- вкладки ---------- */
+function seg(act, v, label, cur) {
+  return '<button class="' + (v === cur ? "on" : "") + '" data-act="' + act + '" data-v="' + v + '">' + label + "</button>";
+}
+function select(field, list, cur) {
+  return '<select data-f="' + field + '">' + list.map(function (x) {
+    return '<option' + (x === cur ? " selected" : "") + ">" + x + "</option>";
+  }).join("") + "</select>";
+}
+function tags(kind) {
+  var list = f[kind];
+  if (!list.length) return "";
+  return '<div class="chips wrap gap">' + list.map(function (w, i) {
+    return '<span class="tag' + (kind === "stop" ? " no" : "") + '">' + esc(w) + '<button data-act="delWord" data-v="' + kind + '" data-i="' + i + '" aria-label="Убрать">×</button></span>';
+  }).join("") + "</div>";
+}
+function filtersPanel() {
+  var h = '<div class="panel">';
+  h += '<div class="row2"><div><label class="cap">Моя сумма, ' + esc(f.fiat) + '</label><input class="in" data-f="amount" inputmode="decimal" placeholder="например 5000" value="' + esc(f.amount) + '"></div>';
+  h += '<div><label class="cap">Мин. выполнение, %</label><input class="in" data-f="minRate" inputmode="numeric" value="' + esc(f.minRate) + '"></div></div>';
+  h += '<div class="row2"><div><label class="cap">Мин. ордеров</label><input class="in" data-f="minOrders" inputmode="numeric" value="' + esc(f.minOrders) + '"></div>';
+  h += '<div><label class="cap">Описание</label><label class="check"><input type="checkbox" data-f="third"' + (f.third ? " checked" : "") + "> Третьи лица</label></div></div>";
+  h += '<label class="cap">Обязательные слова (все должны быть в описании)</label>';
+  h += '<div class="add"><input class="in" data-f="in-words" placeholder="слово и Enter"><button data-act="addWord" data-v="words" aria-label="Добавить">+</button></div>' + tags("words");
+  h += '<label class="cap">Исключить слова (если есть в описании — скрыть)</label>';
+  h += '<div class="add"><input class="in" data-f="in-stop" placeholder="слово и Enter"><button data-act="addWord" data-v="stop" aria-label="Добавить">+</button></div>' + tags("stop");
+  h += '<div class="row2 gap"><button class="btn" data-act="reset">Сбросить</button><button class="btn" data-act="savePreset">Сохранить набор</button></div></div>';
+  return h;
+}
+function fallbackBanner(meta) {
+  var on = rubOn(meta.fiat, true);
+  return '<div class="banner">' + (on
+    ? "Bybit не отдаёт рублёвые объявления без входа в аккаунт, поэтому показаны объявления в USD, пересчитанные в рубли по " + (num(prefs.myRate) ? "вашему курсу" : "курсу ЦБ") + " (1 USD = " + fmt(rubRate("USD"), 2) + " ₽). Цена приблизительная."
+    : "Bybit не отдал рублёвые объявления, показаны объявления в USD. Курс ЦБ не загрузился, пересчёт в рубли недоступен.") + "</div>";
+}
+function summary(meta, shown) {
+  var on = rubOn(meta.fiat, meta.fallback);
+  var k = on ? rubRate(meta.fiat) : 1, cur = on ? "₽" : meta.fiat;
+  var t = new Date(meta.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  var h = meta.fallback ? fallbackBanner(meta) : "";
+  h += '<div class="sum"><div><small>Средний курс</small><b>' + fmt(mul(meta.mid, k), 2) + "</b></div>";
+  h += "<div><small>Минимум</small><b>" + fmt(mul(meta.min, k), 2) + "</b></div>";
+  h += "<div><small>Максимум</small><b>" + fmt(mul(meta.max, k), 2) + "</b></div></div>";
+  h += '<p class="note">Показано ' + shown + " из " + meta.total + " · " + esc(cur) + " за 1 " + esc(meta.token) + " · обновлено " + t + " (" + esc(meta.source) + ")</p>";
+  h += '<button class="ghost" data-act="gospread">' + icon("trend") + "Посчитать спред по этой паре</button>";
+  return h;
+}
+function resultsHtml() {
+  if (ui.loading) return '<div class="sk"></div><div class="sk"></div><div class="sk"></div>';
+  if (ui.error) {
+    var h = '<div class="err"><b>Не удалось загрузить объявления</b>' + esc(ui.error);
+    h += "<br>Попробуйте ещё раз. Если ошибка повторяется, проверьте подключение: Профиль → Подключение.";
+    h += '<br><button class="btn acc" data-act="search">Повторить</button><button class="btn" data-act="conn">Подключение</button></div>';
+    return h;
+  }
+  if (!ui.raw) return '<div class="empty"><b>Нажмите «Поиск»</b>Выберите направление, монету и валюту, при желании настройте фильтры.</div>';
+  var list = applyFilters(ui.raw, ui.meta.side, ui.meta);
+  var out = summary(ui.meta, list.length);
+  if (!list.length) {
+    var why = ui.raw.length ? "Все объявления отсеял фильтр. Ослабьте условия: понизьте мин. выполнение, уберите слова или сумму." :
+      "Bybit не вернул объявлений для " + esc(ui.meta.token) + "/" + esc(ui.meta.fiat) + ". Попробуйте другую валюту.";
+    return out + '<div class="empty"><b>Ничего не найдено</b>' + why + "</div>";
+  }
+  var ctx = { side: ui.meta.side, token: ui.meta.token, fiat: ui.meta.fiat, words: f.words, force: ui.meta.fallback };
+  return out + list.slice(0, 40).map(function (ad) { return adCard(ad, ctx, ui.meta.mid); }).join("");
+}
+function searchTab() {
+  var n = filterCount();
+  var h = '<header class="top"><h1>P2P Радар</h1><p>Объявления Bybit с умными фильтрами</p></header>';
+  h += '<div class="seg">' + seg("side", "buy", "Купить", f.side) + seg("side", "sell", "Продать", f.side) + "</div>";
+  h += '<div class="row2"><div><label class="cap">Монета</label>' + select("token", TOKENS, f.token) + "</div>";
+  h += '<div><label class="cap">Валюта</label>' + select("fiat", FIATS, f.fiat) + "</div></div>";
+  h += '<label class="cap">Сортировка</label><div class="chips">' + SORTS.map(function (s) {
+    return '<button class="chip' + (f.sort === s[0] ? " on" : "") + '" data-act="sort" data-v="' + s[0] + '">' + s[1] + "</button>";
+  }).join("") + "</div>";
+  h += '<button class="ghost" data-act="toggleFilters">' + icon("filter") + "Фильтры" + (n ? ' <span class="badge">' + n + "</span>" : "") + (ui.open ? " ▴" : " ▾") + "</button>";
+  if (ui.open) h += filtersPanel();
+  h += '<div id="results">' + resultsHtml() + "</div>";
+  return h;
+}
+function favsTab() {
+  var h = '<header class="top"><h1>Избранное</h1><p>Объявления, которые вы отметили звездой</p></header>';
+  if (!favs.length) return h + '<div class="empty"><b>Пока пусто</b>Нажмите звезду в карточке объявления, и оно появится здесь.</div>';
+  h += '<p class="note">Данные сохранены на момент добавления, актуальный курс смотрите в поиске.</p>';
+  return h + favs.map(function (a) {
+    return adCard(a, { side: a.side, token: a.token, fiat: a.fiat, words: [] }, null);
+  }).join("");
+}
+function sortName(k) { for (var i = 0; i < SORTS.length; i++) if (SORTS[i][0] === k) return SORTS[i][1].toLowerCase(); return k; }
+function describe(q) {
+  var s = (q.side === "buy" ? "Купить " : "Продать ") + q.token + "/" + q.fiat + " · " + sortName(q.sort);
+  if (q.third) s += " · третьи лица";
+  if (q.words && q.words.length) s += " · слова: " + q.words.join(", ");
+  if (q.stop && q.stop.length) s += " · без: " + q.stop.join(", ");
+  if (q.amount) s += " · сумма " + q.amount;
+  return s;
+}
+function histTab() {
+  var h = '<header class="top"><h1>История</h1><p>Последние поиски, нажмите чтобы повторить</p></header>';
+  if (!hist.length) return h + '<div class="empty"><b>История пуста</b>Здесь появятся ваши поиски.</div>';
+  h += '<div class="list">' + hist.map(function (q, i) {
+    var t = new Date(q.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return '<div class="hrow"><div class="t">' + esc(describe(q)) + "<small>" + t + " · найдено " + q.found + '</small></div><button class="btn" data-act="repeat" data-i="' + i + '">Повторить</button></div>';
+  }).join("") + "</div>";
+  return h + '<p class="footnote"><button class="btn danger" data-act="clearHist">Очистить историю</button></p>';
+}
+function row(act, ico, title, sub, extra) {
+  return '<button class="item" data-act="' + act + '"' + (extra || "") + '><span class="ico">' + icon(ico) + '</span><span class="rt"><b>' + title + "</b><small>" + sub + '</small></span><span class="chev">›</span></button>';
+}
+function profileTab() {
+  var name = user ? ((user.first_name || "") + " " + (user.last_name || "")).trim() : "Гость";
+  var sub = user ? ((user.username ? "@" + user.username + " · " : "") + "ID " + user.id) : "Откройте приложение из Telegram";
+  var ava = user && user.photo_url ? '<img src="' + esc(user.photo_url) + '" alt="">' : esc((name.charAt(0) || "?").toUpperCase());
+  var h = '<div class="hero"><div class="ava"><div class="av" style="background:hsl(' + hue(name) + ',55%,42%)">' + ava + "</div></div>";
+  h += "<h1>" + esc(name || "Гость") + "</h1><p>" + esc(sub) + '</p><span class="pill">P2P-трейдер</span></div>';
+  h += '<div class="stats"><div><small>Поисков</small><b>' + (prefs.searches || 0) + '</b></div><div><small>В избранном</small><b>' + favs.length + "</b></div></div>";
+  h += "<h2>Оформление</h2><div class=\"seg\">" + seg("theme", "tg", "Как в Telegram", prefs.theme) + seg("theme", "light", "Светлая", prefs.theme) + seg("theme", "dark", "Тёмная", prefs.theme) + "</div>";
+  h += '<h2>Курс</h2><div class="seg">' + seg("rubmode", "on", "В рублях", prefs.rub !== false ? "on" : "off") + seg("rubmode", "off", "Как в объявлении", prefs.rub !== false ? "on" : "off") + "</div>";
+  h += '<label class="cap">Свой курс доллара, ₽ (пусто — курс ЦБ)</label><input class="in" data-f="myRate" inputmode="decimal" placeholder="' + (rates.rub && rates.rub.USD ? esc(fmt(rates.rub.USD, 2)) : "например 85") + '" value="' + esc(prefs.myRate || "") + '">';
+  h += '<p class="note">' + (rubRate("USD") ? "Сейчас считаю по " + (num(prefs.myRate) ? "вашему курсу" : "курсу ЦБ") + ": 1 USD = " + fmt(rubRate("USD"), 2) + " ₽." : "Курс ЦБ загрузится при первом поиске.") + "</p>";
+  h += "<h2>Аккаунт</h2><div class=\"list\">";
+  h += row("presets", "filter", "Сохранённые наборы", presets.length ? presets.length + " шт." : "Фильтры, которые вы сохранили");
+  h += row("goFavs", "star", "Избранное", favs.length + " объявлений");
+  h += row("goHist", "clock", "История поисков", hist.length + " записей");
+  h += row("contactAdmin", "users", "Добавить постоянника", "Запросить добавление у администратора");
+  h += row("clearAll", "trash", "Очистить данные", "Избранное, история и наборы");
+  h += "</div><h2>Помощь</h2><div class=\"list\">";
+  h += row("help", "book", "Инструкция", "Как искать и пользоваться фильтрами");
+  h += row("conn", "globe", "Подключение", (prefs.proxy || CONFIG.PROXY) ? "Прокси подключён" : "Прямой запрос к Bybit");
+  h += row("bybit", "link", "Bybit P2P", "Открыть площадку");
+  h += row("bot", "bot", "Открыть бота", "@" + BOT);
+  h += '</div><p class="footnote">P2P Радар · данные Bybit P2P</p>';
+  return h;
+}
+function best(list, mode) {
+  var b = null;
+  list.forEach(function (ad) {
+    var p = num(ad.price);
+    if (p === null) return;
+    if (b === null || (mode === "min" ? p < num(b.price) : p > num(b.price))) b = ad;
+  });
+  return b;
+}
+function spCtx(d, side) { return { side: side, token: d.meta.token, fiat: d.meta.fiat, words: [], force: d.meta.fallback }; }
+function calcCur() {
+  var d = ui.sp.data;
+  return d ? dispCur(d.meta.fiat, d.meta.fallback) : dispCur(f.fiat, false);
+}
+function calcDefaults() {
+  var d = ui.sp.data;
+  if (!d) return { ask: null, bid: null };
+  return {
+    ask: d.ask ? disp(num(d.ask.price), d.meta.fiat, d.meta.fallback) : null,
+    bid: d.bid ? disp(num(d.bid.price), d.meta.fiat, d.meta.fallback) : null
+  };
+}
+function clampFee(v) { return Math.min(99, Math.max(0, num(v) || 0)); }
+function calcOutHtml() {
+  var def = calcDefaults(), cur = calcCur(), d = ui.sp.data;
+  var token = d ? d.meta.token : f.token;
+  var amount = num(ui.calc.amount) || 0;
+  var buy = num(ui.calc.buy) || def.ask, sell = num(ui.calc.sell) || def.bid;
+  var fb = clampFee(ui.calc.feeBuy), fs = clampFee(ui.calc.feeSell);
+  if (!buy || !sell) return '<p class="note">Введите цену покупки и продажи или нажмите «Посчитать спред»: пустые поля возьмут лучшие цены из найденных.</p>';
+  var coins = amount * (1 - fb / 100) / buy;
+  var revenue = coins * sell * (1 - fs / 100);
+  var net = revenue - amount;
+  var feeBuyCost = amount * fb / 100;
+  var feeSellCost = coins * sell * fs / 100;
+  var breakEven = buy / ((1 - fb / 100) * (1 - fs / 100));
+  var spread = (sell / buy - 1) * 100;
+  function c(v) { return v > 0 ? "pos" : (v < 0 ? "neg" : ""); }
+  var h = '<div class="res-line"><span>Купили на ' + fmt(amount, 2) + " " + esc(cur) + "</span><b>" + fmt(coins, 4) + " " + esc(token) + "</b></div>";
+  h += '<div class="res-line"><span>Комиссия покупки (' + fmt(fb, 2) + "%)</span><b>" + fmt(feeBuyCost, 2) + " " + esc(cur) + "</b></div>";
+  h += '<div class="res-line"><span>Комиссия продажи (' + fmt(fs, 2) + "%)</span><b>" + fmt(feeSellCost, 2) + " " + esc(cur) + "</b></div>";
+  h += '<div class="res-line"><span>Получите при продаже</span><b>' + fmt(revenue, 2) + " " + esc(cur) + "</b></div>";
+  h += '<div class="res-line"><span>Спред ваших цен</span><b class="' + c(spread) + '">' + (spread > 0 ? "+" : "") + fmt(spread, 2) + "%</b></div>";
+  h += '<div class="res-line"><span>Чистая прибыль</span><b class="' + c(net) + '">' + (net > 0 ? "+" : "") + fmt(net, 2) + " " + esc(cur) + " (" + fmt(amount ? net / amount * 100 : 0, 2) + "%)</b></div>";
+  h += '<div class="res-line"><span>Продавать выгодно от</span><b>' + fmt(breakEven, 2) + " " + esc(cur) + "</b></div>";
+  return h;
+}
+function calcBlock() {
+  var cur = calcCur(), def = calcDefaults();
+  function inp(key, label, ph) {
+    return '<div><label class="cap">' + label + '</label><input class="in" data-f="' + key + '" inputmode="decimal" placeholder="' + esc(ph) + '" value="' + esc(ui.calc[key.replace("calc", "").replace(/^./, function (x) { return x.toLowerCase(); })] || "") + '"></div>';
+  }
+  var h = '<h2 class="sub-h">Калькулятор</h2>';
+  h += '<div class="row2">' + inp("calcAmount", "Сумма, " + esc(cur), "10000") + inp("calcBuy", "Купил по, " + esc(cur), def.ask ? fmt(def.ask, 2) : "цена") + "</div>";
+  h += '<div class="row2">' + inp("calcSell", "Продал по, " + esc(cur), def.bid ? fmt(def.bid, 2) : "цена") + inp("calcFeeBuy", "Комиссия покупки, %", "0") + "</div>";
+  h += '<div class="row2">' + inp("calcFeeSell", "Комиссия продажи, %", "0") + "<div></div></div>";
+  h += '<p class="note">Пустые «Купил по» и «Продал по» берут лучшие цены из найденных. Комиссия покупки уменьшает количество монет, комиссия продажи уменьшает выручку.</p>';
+  h += '<div class="panel gap" id="calcOut">' + calcOutHtml() + "</div>";
+  return h;
+}
+function spreadTab() {
+  var sp = ui.sp, d = sp.data;
+  var h = '<header class="top"><h1>Спред</h1><p>Разница между ценой покупки и продажи на Bybit P2P</p></header>';
+  h += '<div class="row2"><div><label class="cap">Монета</label>' + select("token", TOKENS, f.token) + "</div>";
+  h += '<div><label class="cap">Валюта</label>' + select("fiat", FIATS, f.fiat) + "</div></div>";
+  h += '<p class="note">Учитываются фильтры со вкладки «Поиск»: рейтинг, число ордеров, слова, сумма.</p>';
+  if (sp.loading) return h + '<div class="sk"></div><div class="sk"></div>';
+  if (sp.error) return h + '<div class="err"><b>Не удалось посчитать</b>' + esc(sp.error) + "</div>" + calcBlock();
+  if (!d) return h + '<div class="empty"><b>Нажмите «Посчитать спред»</b>Приложение найдёт лучшую цену покупки и лучшую цену продажи и покажет разницу. Калькулятор ниже работает и со своими ценами.</div>' + calcBlock();
+  if (!d.ask || !d.bid) return h + '<div class="empty"><b>Не хватает объявлений</b>После фильтров осталось: для покупки ' + d.nBuy + ", для продажи " + d.nSell + ". Ослабьте фильтры на вкладке «Поиск» или введите свои цены в калькуляторе.</div>" + calcBlock();
+  var fiat = d.meta.fiat, force = d.meta.fallback;
+  var askP = disp(num(d.ask.price), fiat, force), bidP = disp(num(d.bid.price), fiat, force), cur = dispCur(fiat, force);
+  var diff = bidP - askP, pct = askP ? diff / askP * 100 : 0;
+  if (d.meta.fallback) h += fallbackBanner(d.meta);
+  h += '<div class="sum"><div><small>Купить по</small><b>' + fmt(askP, 2) + "</b></div>";
+  h += "<div><small>Продать по</small><b>" + fmt(bidP, 2) + "</b></div>";
+  h += '<div><small>Спред</small><b class="' + (diff > 0 ? "pos" : (diff < 0 ? "neg" : "")) + '">' + (diff > 0 ? "+" : "") + fmt(pct, 2) + "%</b></div></div>";
+  h += '<p class="note">' + esc(cur) + " за 1 " + esc(d.meta.token) + ". Разница " + (diff > 0 ? "+" : "") + fmt(diff, 2) + " " + esc(cur) + ". " +
+    (diff > 0 ? "Спред положительный: по лучшим ценам сейчас есть разница в вашу пользу." : "Спред отрицательный: купить и сразу продать невыгодно.") + "</p>";
+  h += calcBlock();
+  h += '<p class="note">Расчёт ориентировочный: цены меняются, лимиты и способы оплаты у ордеров разные.</p>';
+  h += '<h2 class="sub-h">Где купить</h2>' + adCard(d.ask, spCtx(d, "buy"), null);
+  h += '<h2 class="sub-h">Где продать</h2>' + adCard(d.bid, spCtx(d, "sell"), null);
+  return h;
+}
+var regs = load("regs", null) || defaultRegs();
+function defaultRegs() {
+  var note = "Постоянный клиент. Курс 85–90 ₽.";
+  return { buy: [
+    { handle: "tracckker", from: 85, to: 90, note: note },
+    { handle: "bakinskiiy77", from: 85, to: 90, note: note }
+  ], sell: [] };
+}
+function saveRegs() { save("regs", regs); }
+function nstr(v) { return String(v).replace(".", ","); }
+function regRange(r) { return (r.from === r.to ? nstr(r.from) : nstr(r.from) + "–" + nstr(r.to)) + " ₽"; }
+function openTg(handle) {
+  var u = "https://t.me/" + handle;
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else openUrl(u);
+}
+function regsTab() {
+  var kind = ui.regTab, list = regs[kind] || [];
+  var h = '<header class="top"><h1>Постоянники</h1><p>Ваши клиенты и их курс</p></header>';
+  h += '<div class="seg">' + seg("regtab", "buy", "Покупка", kind) + seg("regtab", "sell", "Продажа", kind) + "</div>";
+  h += '<p class="note">' + (kind === "buy" ? "Постоянники, которые покупают." : "Постоянники, которые продают.") + " Нажмите на имя, чтобы открыть описание.</p>";
+  if (!list.length) h += '<div class="empty"><b>Пока никого</b>Нажмите «Добавить постоянника» ниже.</div>';
+  else h += '<div class="list">' + list.map(function (r, i) {
+    return '<button class="item" data-act="regopen" data-i="' + i + '"><span class="ico">' + icon("user") + '</span><span class="rt"><b>Постоянник ' + (i + 1) + "</b><small>@" + esc(r.handle) + " · " + esc(regRange(r)) + '</small></span><span class="chev">›</span></button>';
+  }).join("") + "</div>";
+  h += '<button class="ghost" data-act="regadd">+ Добавить постоянника</button>';
+  return h;
+}
+function regOutHtml(r) {
+  var a = num(ui.regCalc) || 0;
+  if (!a) return '<p class="note">Введите сумму в USDT, и я посчитаю, сколько это в рублях по курсу постоянника.</p>';
+  return '<div class="res-line"><span>По нижнему курсу (' + nstr(r.from) + ')</span><b>' + fmt(a * r.from, 2) + " ₽</b></div>" +
+    '<div class="res-line"><span>По верхнему курсу (' + nstr(r.to) + ')</span><b>' + fmt(a * r.to, 2) + " ₽</b></div>";
+}
+function regSheet(i) {
+  var r = (regs[ui.regTab] || [])[i];
+  if (!r) return;
+  ui.regIdx = i; ui.regCalc = "";
+  var h = '<div class="res-line"><span>Telegram</span><b>@' + esc(r.handle) + "</b></div>";
+  h += '<div class="res-line"><span>Курс</span><b>' + esc(regRange(r)) + "</b></div>";
+  h += '<p>' + esc(r.note || "Описания пока нет. Нажмите «Изменить», чтобы добавить.") + "</p>";
+  h += '<label class="cap">Сумма в USDT</label><input class="in" data-f="regAmt" inputmode="decimal" placeholder="например 1000">';
+  h += '<div class="panel gap" id="regOut">' + regOutHtml(r) + "</div>";
+  h += '<div class="acts"><button class="btn acc" data-act="opentg" data-h="' + esc(r.handle) + '">Открыть в Telegram</button><button class="btn" data-act="copyh" data-h="' + esc(r.handle) + '">Копировать @ник</button></div>';
+  h += '<div class="acts"><button class="btn" data-act="regedit" data-i="' + i + '">Изменить</button><button class="btn danger" data-act="regdel" data-i="' + i + '">Удалить</button></div>';
+  sheet("Постоянник " + (i + 1), h);
+}
+function regFormSheet(kind, idx) {
+  var r = idx === null ? { handle: "", from: "", to: "", note: "" } : regs[kind][idx];
+  ui.regForm = { kind: kind, idx: idx, handle: r.handle, from: String(r.from), to: String(r.to), note: r.note || "" };
+  var h = '<label class="cap">Ник в Telegram</label><input class="in" data-f="regHandle" placeholder="@ник" value="' + esc(r.handle ? "@" + r.handle : "") + '">';
+  h += '<div class="row2"><div><label class="cap">Курс от, ₽</label><input class="in" data-f="regFrom" inputmode="decimal" value="' + esc(r.from) + '"></div>';
+  h += '<div><label class="cap">Курс до, ₽</label><input class="in" data-f="regTo" inputmode="decimal" value="' + esc(r.to) + '"></div></div>';
+  h += '<label class="cap">Описание</label><textarea class="in" data-f="regNote" rows="3" placeholder="Например: объёмы, банки, время работы">' + esc(r.note) + "</textarea>";
+  h += '<div class="acts"><button class="btn acc" data-act="regsave">Сохранить</button><button class="btn" data-act="sheetClose">Отмена</button></div>';
+  sheet(idx === null ? "Новый постоянник" : "Изменить постоянника", h);
+}
+function regSave() {
+  var F = ui.regForm;
+  var handle = String(F.handle || "").trim().replace(/^https?:\/\/t\.me\//i, "").replace(/^@/, "").split(/[\/?]/)[0];
+  var from = num(String(F.from).replace(",", ".")), to = num(String(F.to).replace(",", "."));
+  if (!/^[A-Za-z0-9_]{4,32}$/.test(handle)) { toast("Ник: 4–32 символа, буквы, цифры и _"); return; }
+  if (from === null || to === null) { toast("Укажите курс «от» и «до»"); return; }
+  if (from > to) { var x = from; from = to; to = x; }
+  var rec = { handle: handle, from: from, to: to, note: String(F.note || "").trim() };
+  if (F.idx === null) regs[F.kind].push(rec); else regs[F.kind][F.idx] = rec;
+  saveRegs(); closeSheet(); render(); toast("Сохранено");
+}
+function navHtml() {
+  var t = [["search", "search", "Поиск"], ["requests", "book", "Заявки"], ["spread", "trend", "Спред"], ["regs", "users", "Постоянники"], ["favs", "star", "Избранное"], ["prof", "user", "Профиль"]];
+  return t.map(function (x) {
+    return '<button class="' + (ui.tab === x[0] ? "on" : "") + '" data-act="tab" data-v="' + x[0] + '">' + icon(x[1]) + "<span>" + x[2] + "</span></button>";
+  }).join("");
+}
+function ctaHtml() {
+  if (ui.tab === "spread") {
+    return '<button class="primary" data-act="spread"' + (ui.sp.loading ? " disabled" : "") + ">" + (ui.sp.loading ? "Считаю…" : icon("trend") + "Посчитать спред") + "</button>";
+  }
+  return '<button class="primary" data-act="search"' + (ui.loading ? " disabled" : "") + ">" + (ui.loading ? "Ищу…" : icon("search") + "Поиск") + "</button>";
+}
+function render() {
+  var y = window.scrollY || 0;
+  var h;
+  if (ui.tab === "search") h = searchTab();
+  else if (ui.tab === "spread") h = spreadTab();
+  else if (ui.tab === "regs") h = regsTab();
+  else if (ui.tab === "requests") h = requestsTab();
+  else if (ui.tab === "favs") h = favsTab();
+  else if (ui.tab === "hist") h = histTab();
+  else h = profileTab();
+  $("view").innerHTML = h;
+  $("nav").innerHTML = navHtml();
+  $("cta").innerHTML = (ui.tab === "search" || ui.tab === "spread") ? ctaHtml() : "";
+  window.scrollTo(0, y);
+}
+
+/* ---------- окна ---------- */
+function sheet(title, body) {
+  var s = $("sheet");
+  s.innerHTML = '<div class="sheet-card"><div class="sheet-h"><b>' + esc(title) + '</b><button class="btn" data-act="sheetClose">Закрыть</button></div><div class="sheet-b">' + body + "</div></div>";
+  s.className = "show";
+}
+function closeSheet() { $("sheet").className = ""; $("sheet").innerHTML = ""; }
+function helpSheet() {
+  sheet("Как пользоваться",
+    "<ul><li><b>Поиск.</b> Выберите «Купить» или «Продать», монету и валюту и нажмите «Поиск».</li>" +
+    "<li><b>Курс в рублях.</b> Цены других валют пересчитываются в рубли по курсу ЦБ. Выключить можно в Профиле. Если выбрать рубли, а Bybit их не отдаст, приложение покажет объявления в USD с пересчётом.</li>" +
+    "<li><b>Сортировка.</b> «Выгодные» ставит сверху лучший курс для вашего направления: при покупке самый низкий, при продаже самый высокий.</li>" +
+    "<li><b>Метка ⚠.</b> Цена сильно отличается от курса ЦБ. Для стейблкоинов это часто приманка или ошибка в объявлении: проверьте продавца.</li>" +
+    "<li><b>Обязательные слова.</b> Объявление попадёт в выдачу, только если все слова есть в его описании. Слова из «Исключить» скрывают объявление.</li>" +
+    "<li><b>Спред.</b> Вкладка «Спред» берёт лучшую цену покупки и лучшую цену продажи и считает разницу и прибыль на вашу сумму.</li>" +
+    "<li><b>Открыть ордер.</b> Открывает страницу продавца на Bybit, где вы создаёте ордер. Само оформление и оплата происходят в Bybit.</li>" +
+    "<li><b>Свой курс.</b> Если курс ЦБ не подходит, введите свой курс доллара в Профиле. Все пересчёты в рубли пойдут по нему.</li>" +
+    "<li><b>Постоянники.</b> Список ваших клиентов с курсом и описанием. Нажмите на имя, чтобы открыть описание и перейти в Telegram. Список можно менять, он хранится на вашем телефоне.</li>" +
+    "<li><b>Звезда</b> сохраняет объявление в «Избранное», а «Сохранить набор» запоминает фильтры в профиле.</li></ul>" +
+    "<p><b>Безопасность.</b> Платите только по реквизитам внутри ордера на Bybit и не уходите в сторонние чаты. Оплата с чужих счетов и от третьих лиц нарушает правила Bybit и часто заканчивается заморозкой средств.</p>");
+}
+function connSheet() {
+  var cur = esc(prefs.proxy || CONFIG.PROXY || "");
+  var h = "<p>Если объявления не загружаются, браузер, скорее всего, блокирует прямой запрос к Bybit. Решение: свой прокси на Cloudflare Workers (бесплатно). Вставьте его адрес ниже.</p>";
+  h += '<label class="cap">Адрес прокси</label><input class="in" data-f="proxy" placeholder="https://имя.аккаунт.workers.dev" value="' + cur + '">';
+  h += '<div class="acts"><button class="btn acc" data-act="testConn">Проверить связь</button><button class="btn" data-act="clearProxy">Убрать</button></div>';
+  h += '<p class="note">Сейчас: ' + ((prefs.proxy || CONFIG.PROXY) ? "через прокси" : "напрямую") + "</p>";
+  sheet("Подключение", h);
+}
+function presetsSheet() {
+  if (!presets.length) { sheet("Сохранённые наборы", '<p>Пока нет наборов. Настройте фильтры на вкладке «Поиск» и нажмите «Сохранить набор».</p>'); return; }
+  var h = '<div class="list">' + presets.map(function (q, i) {
+    return '<div class="hrow"><div class="t">' + esc(describe(q)) + '</div><button class="btn acc" data-act="applyPreset" data-i="' + i + '">Взять</button><button class="btn danger" data-act="delPreset" data-i="' + i + '">×</button></div>';
+  }).join("") + "</div>";
+  sheet("Сохранённые наборы", h);
+}
+
+/* ---------- действия ---------- */
+function addWord(kind) {
+  var el = document.querySelector('[data-f="in-' + kind + '"]');
+  if (!el) return;
+  el.value.split(",").forEach(function (w) {
+    w = w.trim().toLowerCase();
+    if (w && f[kind].indexOf(w) === -1) f[kind].push(w);
+  });
+  el.value = "";
+  save("filters", f); render();
+  var again = document.querySelector('[data-f="in-' + kind + '"]');
+  if (again && again.focus) again.focus();
+}
+function pushHist(found) {
+  hist.unshift({ side: f.side, token: f.token, fiat: f.fiat, sort: f.sort, amount: f.amount, third: f.third,
+    words: f.words.slice(), stop: f.stop.slice(), minRate: f.minRate, minOrders: f.minOrders, found: found, at: Date.now() });
+  hist = hist.slice(0, 30); save("hist", hist);
+}
+async function doSearch() {
+  ui.loading = false;
+  ui.raw = [];
+  ui.meta = {side:f.side, token:f.token, fiat:f.fiat, requested:f.fiat, fallback:false, mid:null, min:null, max:null, total:0, source:"demo", at:Date.now()};
+  ui.error = "Поиск реальных объявлений отключён. Это демонстрационная версия интерфейса.";
+  render();
+}
+async function doSpread() {
+  if (ui.sp.loading) return;
+  ui.sp = { loading: true, error: null, data: null }; render();
+  try {
+    await loadRates();
+    var used = f.fiat, fallback = false;
+    var pair = await Promise.all([fetchAds("buy", f.token, used), fetchAds("sell", f.token, used)]);
+    if (!pair[0].items.length && !pair[1].items.length && used === "RUB") {
+      used = "USD"; fallback = true;
+      pair = await Promise.all([fetchAds("buy", f.token, used), fetchAds("sell", f.token, used)]);
+    }
+    var meta = { token: f.token, fiat: used, requested: f.fiat, fallback: fallback, at: Date.now(), source: pair[0].source };
+    var buyList = applyFilters(pair[0].items, "buy", meta);
+    var sellList = applyFilters(pair[1].items, "sell", meta);
+    var ask = best(buyList, "min"), bid = best(sellList, "max");
+    if (ask) { ask._side = "buy"; ask._token = f.token; ask._fiat = used; }
+    if (bid) { bid._side = "sell"; bid._token = f.token; bid._fiat = used; }
+    ui.sp = { loading: false, error: null, data: { meta: meta, ask: ask, bid: bid, nBuy: buyList.length, nSell: sellList.length } };
+  } catch (e) {
+    ui.sp = { loading: false, error: explain(e), data: null };
+  }
+  render();
+}
+function findAd(id) {
+  var all = (ui.raw || []).concat(favs);
+  if (ui.sp && ui.sp.data) all = all.concat([ui.sp.data.ask, ui.sp.data.bid]);
+  for (var i = 0; i < all.length; i++) if (all[i] && String(all[i].id) === String(id)) return all[i];
+  return null;
+}
+function toggleFav(id) {
+  if (isFav(id)) { favs = favs.filter(function (a) { return String(a.id) !== String(id); }); toast("Убрано из избранного"); }
+  else {
+    var ad = findAd(id);
+    if (!ad) return;
+    var m = ui.meta || {};
+    favs.unshift({ id: ad.id, accountId: ad.accountId, userId: ad.userId, nickName: ad.nickName, price: ad.price, recentExecuteRate: ad.recentExecuteRate, recentOrderNum: ad.recentOrderNum,
+      minAmount: ad.minAmount, maxAmount: ad.maxAmount, lastQuantity: ad.lastQuantity, remark: ad.remark, payments: ad.payments,
+      side: ad._side || m.side || f.side, token: ad._token || m.token || f.token, fiat: ad._fiat || m.fiat || f.fiat, savedAt: Date.now() });
+    favs = favs.slice(0, 50); toast("Добавлено в избранное");
+  }
+  save("favs", favs); render();
+}
+function useQuery(q) {
+  f = Object.assign({}, DEFAULT_F, { side: q.side, token: q.token, fiat: q.fiat, sort: q.sort, amount: q.amount || "",
+    minRate: q.minRate == null ? 95 : q.minRate, minOrders: q.minOrders == null ? 50 : q.minOrders, third: !!q.third,
+    words: (q.words || []).slice(), stop: (q.stop || []).slice() });
+  ui.raw = null; ui.meta = null; ui.error = null; save("filters", f);
+}
+async function testConn() {
+  toast("Проверяю…");
+  try {
+    var res = await fetchAds("buy", "USDT", "USD");
+    toast("Связь есть: " + res.items.length + " объявл. (" + res.source + ")");
+  } catch (e) { toast("Нет связи: " + explain(e).slice(0, 60)); }
+}
+
+document.addEventListener("click", function (e) {
+  var el = e.target.closest ? e.target.closest("[data-act]") : null;
+  if (!el) return;
+  var act = el.getAttribute("data-act"), v = el.getAttribute("data-v"), i = parseInt(el.getAttribute("data-i"), 10);
+  var id = el.getAttribute("data-id");
+  haptic();
+  if (act === "tab") { ui.tab = v; closeSheet(); render(); window.scrollTo(0, 0); }
+  else if (act === "side") { f.side = v; ui.raw = null; ui.error = null; save("filters", f); render(); }
+  else if (act === "sort") { f.sort = v; save("filters", f); render(); }
+  else if (act === "search") doSearch();
+  else if (act === "reqfilter") { ui.reqFilter=v; render(); }
+  else if (act === "toggleWork") setWorkMode(!market.work);
+  else if (act === "newRequest") { ui.reqAmount=""; ui.reqRate=""; newRequestSheet(); }
+  else if (act === "publishReq") publishRequest();
+  else if (act === "claimReq") claimRequest(id);
+  else if (act === "chatReq") openRequestChat(id);
+  else if (act === "sendMsg") sendMessage();
+  else if (act === "doneReq") finishRequest(id);
+  else if (act === "spread") doSpread();
+  else if (act === "gospread") { ui.tab = "spread"; render(); window.scrollTo(0, 0); doSpread(); }
+  else if (act === "openurl") openUrl(el.getAttribute("data-url"));
+  else if (act === "rubmode") { prefs.rub = (v === "on"); save("prefs", prefs); render(); }
+  else if (act === "regtab") { ui.regTab = v; render(); }
+  else if (act === "regopen") regSheet(i);
+  else if (act === "regadd") sheet("Добавление постоянника", '<p>Добавление постоянного клиента доступно через администратора. Напишите запрос — администратор проверит данные и добавит контакт в список.</p><div class="panel"><b>Администратор</b><p style="margin:6px 0 0;color:var(--accent)">@bakinskiiy77</p></div><button class="btn acc" data-act="contactAdmin" style="width:100%;margin-top:12px">Написать администратору</button>');
+  else if (act === "contactAdmin") openTg("bakinskiiy77");
+  else if (act === "regedit") regFormSheet(ui.regTab, i);
+  else if (act === "regsave") regSave();
+  else if (act === "regdel") { regs[ui.regTab].splice(i, 1); saveRegs(); closeSheet(); render(); toast("Удалено"); }
+  else if (act === "opentg") openTg(el.getAttribute("data-h"));
+  else if (act === "copyh") { copyText("@" + el.getAttribute("data-h")); toast("Ник скопирован"); }
+  else if (act === "toggleFilters") { ui.open = !ui.open; render(); }
+  else if (act === "addWord") addWord(v);
+  else if (act === "delWord") { f[v].splice(i, 1); save("filters", f); render(); }
+  else if (act === "reset") { f.amount = ""; f.minRate = 95; f.minOrders = 50; f.third = false; f.words = []; f.stop = []; save("filters", f); render(); }
+  else if (act === "savePreset") { presets.unshift({ side: f.side, token: f.token, fiat: f.fiat, sort: f.sort, amount: f.amount, minRate: f.minRate,
+    minOrders: f.minOrders, third: f.third, words: f.words.slice(), stop: f.stop.slice() }); presets = presets.slice(0, 12); save("presets", presets); toast("Набор сохранён в профиле"); }
+  else if (act === "fav") toggleFav(id);
+  else if (act === "copy") { copyText(String(id)); toast("ID скопирован"); }
+  else if (act === "open") openUrl(BYBIT_PAGE + "?actionType=" + (el.getAttribute("data-side") === "buy" ? "1" : "0") + "&token=" + el.getAttribute("data-token") + "&fiat=" + el.getAttribute("data-fiat"));
+  else if (act === "tobot") {
+    if (tg && tg.initData) { try { tg.sendData(JSON.stringify({ side: f.side, token: f.token, fiat: f.fiat, third: f.third })); } catch (x) { toast("Не удалось отправить"); } }
+    else toast("Откройте приложение кнопкой из чата с ботом");
+  }
+  else if (act === "theme") { prefs.theme = v; save("prefs", prefs); applyTheme(); render(); }
+  else if (act === "presets") presetsSheet();
+  else if (act === "applyPreset") { useQuery(presets[i]); closeSheet(); ui.tab = "search"; render(); window.scrollTo(0, 0); toast("Набор применён, нажмите «Поиск»"); }
+  else if (act === "delPreset") { presets.splice(i, 1); save("presets", presets); presetsSheet(); }
+  else if (act === "repeat") { useQuery(hist[i]); ui.tab = "search"; render(); window.scrollTo(0, 0); doSearch(); }
+  else if (act === "clearHist") { hist = []; save("hist", hist); render(); }
+  else if (act === "goFavs") { ui.tab = "favs"; render(); window.scrollTo(0, 0); }
+  else if (act === "goHist") { ui.tab = "hist"; render(); window.scrollTo(0, 0); }
+  else if (act === "clearAll") { favs = []; hist = []; presets = []; save("favs", favs); save("hist", hist); save("presets", presets); toast("Данные очищены"); render(); }
+  else if (act === "help") helpSheet();
+  else if (act === "contactAdmin") openTg("bakinskiiy77");
+  else if (act === "conn") connSheet();
+  else if (act === "clearProxy") { prefs.proxy = ""; save("prefs", prefs); connSheet(); render(); }
+  else if (act === "testConn") testConn();
+  else if (act === "bybit") openUrl(BYBIT_PAGE);
+  else if (act === "bot") { var u = "https://t.me/" + BOT; if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else openUrl(u); }
+  else if (act === "sheetClose") closeSheet();
+});
+$("sheet").addEventListener("click", function (e) { if (e.target === $("sheet")) closeSheet(); });
+
+document.addEventListener("input", function (e) {
+  var t = e.target, k = t.getAttribute && t.getAttribute("data-f");
+  if (!k) return;
+  if (k === "amount") { f.amount = t.value.replace(",", ".").replace(/[^0-9.]/g, ""); save("filters", f); }
+  else if (k === "minRate") { f.minRate = num(t.value) || 0; save("filters", f); }
+  else if (k === "minOrders") { f.minOrders = num(t.value) || 0; save("filters", f); }
+  else if (k === "proxy") { prefs.proxy = t.value.trim(); save("prefs", prefs); }
+  else if (k === "myRate") { prefs.myRate = t.value.replace(",", ".").replace(/[^0-9.]/g, ""); save("prefs", prefs); }
+  else if (k === "regAmt") {
+    ui.regCalc = t.value.replace(",", ".").replace(/[^0-9.]/g, "");
+    var rr = (regs[ui.regTab] || [])[ui.regIdx], ro = $("regOut");
+    if (ro && rr) ro.innerHTML = regOutHtml(rr);
+  }
+  else if (k === "reqAmount") ui.reqAmount = t.value.replace(",", ".").replace(/[^0-9.]/g, "");
+  else if (k === "reqRate") ui.reqRate = t.value.replace(",", ".").replace(/[^0-9.]/g, "");
+  else if (k === "chatText") ui.chatText = t.value;
+  else if (k === "regHandle") ui.regForm.handle = t.value;
+  else if (k === "regFrom") ui.regForm.from = t.value;
+  else if (k === "regTo") ui.regForm.to = t.value;
+  else if (k === "regNote") ui.regForm.note = t.value;
+  else if (k.indexOf("calc") === 0) {
+    var map = { calcAmount: "amount", calcBuy: "buy", calcSell: "sell", calcFeeBuy: "feeBuy", calcFeeSell: "feeSell" };
+    if (map[k]) {
+      ui.calc[map[k]] = t.value.replace(",", ".").replace(/[^0-9.]/g, "");
+      save("calc", ui.calc);
+      var o = $("calcOut"); if (o) o.innerHTML = calcOutHtml();
+    }
+  }
+});
+document.addEventListener("change", function (e) {
+  var t = e.target, k = t.getAttribute && t.getAttribute("data-f");
+  if (!k) return;
+  if (k === "token" || k === "fiat") { f[k] = t.value; ui.raw = null; ui.error = null; ui.sp = { loading: false, error: null, data: null }; save("filters", f); render(); }
+  else if (k === "third") { f.third = t.checked; save("filters", f); render(); }
+  else if (k === "amount" || k === "minRate" || k === "minOrders" || k === "myRate") { render(); }
+});
+document.addEventListener("keydown", function (e) {
+  var t = e.target, k = t.getAttribute && t.getAttribute("data-f");
+  if (e.key === "Enter" && (k === "in-words" || k === "in-stop")) { e.preventDefault(); addWord(k === "in-words" ? "words" : "stop"); }
+});
+
+if (tg) {
+  try { tg.ready(); tg.expand(); tg.onEvent("themeChanged", function () { applyTheme(); }); } catch (e) {}
+}
+applyTheme();
+render();
+loadRates().then(function (changed) { if (changed) render(); });
+if (marketConfigured()) { marketInit().then(function(){ loadRequests(); }).catch(function(){ toast("Не удалось подключить заявки"); }); setInterval(function(){ if (ui.tab === "requests" && market.ready) loadRequests(); if (market.active && market.ready) loadMessages(market.active.id).then(showChatSheet); }, 8000); }
+})();
+</script>
+</body>
+</html>
